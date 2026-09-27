@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 type InteractionBody = {
   id?: string;
   type?: number;
+  guild_id?: string;
   data?: {
     name?: string;
     options?: Array<{ name?: string; value?: unknown }>;
@@ -13,6 +14,7 @@ type InteractionBody = {
 };
 
 export async function POST(request: Request) {
+  // Discord requires verifying the raw body string against the Ed25519 signature before parsing it.
   const rawBody = await request.text();
 
   const signature = request.headers.get("x-signature-ed25519");
@@ -30,10 +32,12 @@ export async function POST(request: Request) {
     return new Response("Invalid JSON", { status: 400 });
   }
 
+  // Type 1 is a PING from Discord to verify the endpoint is alive
   if (body.type === 1) {
     return Response.json({ type: 1 });
   }
 
+  // Type 2 is a SLASH COMMAND interaction
   if (body.type !== 2 || !body.id) {
     return Response.json({ type: 4, data: { content: "Unknown command." } });
   }
@@ -44,6 +48,7 @@ export async function POST(request: Request) {
     body.member?.user?.username ?? body.user?.username ?? "unknown";
 
   try {
+    // Discord may retry failed/slow requests. We must dedup by ID to avoid double-processing.
     const existingLog = await prisma.interactionLog.findUnique({
       where: { discordInteractionId: body.id },
     });
@@ -62,39 +67,71 @@ export async function POST(request: Request) {
       });
     }
 
-    const config = await prisma.commandConfig.findUnique({
-      where: { commandName },
-    });
+    const config = body.guild_id ? await prisma.commandConfig.findUnique({
+      where: {
+        guildId_commandName: {
+          guildId: body.guild_id,
+          commandName,
+        }
+      },
+    }) : null;
     const inputText =
       commandName === "report"
         ? body.data?.options?.find((option) => option.name === "text")?.value
         : null;
     const reportText = typeof inputText === "string" ? inputText : "";
-    const responseText =
-      config?.enabled === false
-        ? "This command is currently disabled."
-        : config?.replyMessage ||
-        (commandName === "status"
-          ? "✅ Bot is online and healthy."
-          : `✅ Report logged: ${reportText}`);
+
+    let responseText = "";
+    let logStatus = "success";
+
+    if (config?.enabled === false) {
+      responseText = "This command is currently disabled.";
+      logStatus = "disabled";
+    } else {
+      if (commandName === "status") {
+        responseText = config?.replyMessage || "✅ Bot is online and healthy.";
+      } else if (commandName === "report") {
+        if (config?.replyMessage) {
+          if (config.replyMessage.includes("{text}")) {
+            responseText = config.replyMessage.replace("{text}", reportText);
+          } else {
+            responseText = `${config.replyMessage} ${reportText}`.trim();
+          }
+        } else {
+          responseText = `✅ Report logged: ${reportText}`.trim();
+        }
+      } else {
+        responseText = config?.replyMessage || "Command executed.";
+      }
+    }
 
     const interactionLog = await prisma.interactionLog.create({
       data: {
+        id: crypto.randomUUID(),
         discordInteractionId: body.id,
         commandName,
+        guildId: body.guild_id,
         userId,
         username,
         inputText: commandName === "report" ? reportText : null,
         responseSent: responseText,
-        status: "success",
+        status: logStatus,
       },
     });
 
     if (commandName === "report" && config?.enabled !== false) {
       try {
-        const webhookUrl = process.env.MIRROR_WEBHOOK_URL;
+        if (!body.guild_id) {
+          throw new Error("Interaction missing guild_id");
+        }
+
+        const serverConfig = await prisma.server.findUnique({
+          where: { guildId: body.guild_id }
+        });
+
+        const webhookUrl = serverConfig?.mirrorWebhookUrl;
         if (!webhookUrl) {
-          throw new Error("MIRROR_WEBHOOK_URL is not configured");
+          throw new Error("MIRROR_WEBHOOK_URL is not configured for this server");
         }
 
         const mirrorResponse = await fetch(webhookUrl, {

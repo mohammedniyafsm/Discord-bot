@@ -23,12 +23,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
+  refresh_token     String?
+  access_token      String?
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String? @db.Text
+  id_token          String?
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -53,4 +53,43 @@ model VerificationToken {
 
   @@unique([identifier, token])
 }
+
+model Server {
+  id               String   @id @default(cuid())
+  guildId          String   @unique
+  guildName        String
+  notifyChannelId  String
+  mirrorWebhookUrl String
+  ownerId          String
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model CommandConfig {
+  id           String   @id @default(cuid())
+  guildId      String
+  commandName  String
+  enabled      Boolean  @default(true)
+  replyMessage String   @default("")
+  updatedAt    DateTime @updatedAt
+
+  @@unique([guildId, commandName])
+}
+
+model InteractionLog {
+  id                   String   @id
+  discordInteractionId String   @unique
+  commandName          String
+  guildId              String?
+  userId               String
+  username             String
+  inputText            String?
+  responseSent         String
+  mirrored             Boolean  @default(false)
+  status               String
+  errorMessage         String?
+  createdAt            DateTime @default(now())
+}
+
 

@@ -1,22 +1,19 @@
-
 import dotenv from "dotenv";
 
 dotenv.config({ path: ".env.local" });
 
 const botToken = process.env.DISCORD_BOT_TOKEN;
 const applicationId = process.env.DISCORD_APPLICATION_ID;
-const guildId = process.env.DISCORD_GUILD_ID;
 
-if (!botToken || !applicationId || !guildId) {
+if (!botToken || !applicationId) {
   console.error(
-    "Missing DISCORD_BOT_TOKEN, DISCORD_APPLICATION_ID, or DISCORD_GUILD_ID in .env.local",
+    "Missing DISCORD_BOT_TOKEN or DISCORD_APPLICATION_ID in .env.local",
   );
   throw new Error("Missing required Discord environment variables");
 }
 
 const requiredBotToken = botToken;
 const requiredApplicationId = applicationId;
-const requiredGuildId = guildId;
 
 const commands = [
   {
@@ -38,7 +35,7 @@ const commands = [
 ];
 
 async function registerCommands() {
-  const url = `https://discord.com/api/v10/applications/${encodeURIComponent(requiredApplicationId)}/guilds/${encodeURIComponent(requiredGuildId)}/commands`;
+  const url = `https://discord.com/api/v10/applications/${encodeURIComponent(requiredApplicationId)}/commands`;
 
   const response = await fetch(url, {
     method: "PUT",

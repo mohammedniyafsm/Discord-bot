@@ -15,8 +15,8 @@ export default function Navbar() {
         <span>Discord Ops</span>
       </a>
       <nav className={styles.navigation} aria-label="Main navigation">
-        <a href="#features">Features</a>
-        <a href="#workflow">Workflow</a>
+        {/* <a href="#features">Features</a>
+        <a href="#workflow">Workflow</a> */}
       </nav>
       {status === 'authenticated' ? (
         <div className={styles.accountActions}>

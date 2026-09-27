@@ -1,71 +1,114 @@
-# Discord Interactions Bot
+# Discord Slash-Command Bot & Dashboard
 
-This project is a Discord slash-command bot with a Next.js admin dashboard planned for a later phase. It exposes a Vercel-compatible Discord interactions endpoint that verifies Ed25519 signatures, handles PING validation, persists command interactions in Neon Postgres through Prisma, and mirrors reports to a webhook.
+A full-stack Next.js web application and Discord bot that processes slash commands, securely verifies interactions via Ed25519 signatures, mirrors reports to hidden channels, and provides a multi-tenant dashboard for server admins.
 
-## Run locally
+## Features
 
-1. Install dependencies:
+- **Serverless Discord Bot:** Powered by a Next.js API route (`/api/interactions`) instead of an always-on websocket, meaning it costs $0 to host and scales infinitely.
+- **Secure Ed25519 Verification:** Implements raw-body cryptographic signature verification using `tweetnacl` to reject unauthorized requests.
+- **Multi-Tenant Architecture:** Admins can sign in via Discord OAuth and manage settings specifically for the servers they own (`MANAGE_GUILD` permissions).
+- **Live Observability Dashboard:** View real-time logs of every command executed in your server, including status, user info, and whether the webhook mirror succeeded.
+- **Dynamic Command Configuration:** Toggle commands on/off per server, or inject dynamic responses using the `{text}` variable.
+- **Automated Webhook Provisioning:** The app automatically provisions a hidden Discord webhook when connecting a server to mirror reports.
 
+---
+
+## Tech Stack
+- **Framework:** Next.js 14 (App Router)
+- **Database:** Neon (Serverless PostgreSQL)
+- **ORM:** Prisma
+- **Auth:** NextAuth (Discord Provider)
+- **Styling:** CSS Modules & Lucide React Icons
+
+---
+
+## Local Development Setup
+
+### 1. Prerequisites
+- Node.js (v18+)
+- A Discord Developer Application (Bot)
+- A PostgreSQL Database (Neon recommended)
+
+### 2. Environment Variables
+Create a `.env.local` file in the root directory:
+
+```env
+# Database
+DATABASE_URL="postgresql://user:password@host/db"
+
+# NextAuth
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="generate-a-random-secret"
+
+# Discord OAuth (for the NextAuth Dashboard Login)
+DISCORD_CLIENT_ID="your_oauth_client_id"
+DISCORD_CLIENT_SECRET="your_oauth_client_secret"
+
+# Discord Bot Credentials
+DISCORD_BOT_TOKEN="your_bot_token"
+DISCORD_PUBLIC_KEY="your_bot_public_key"
+```
+
+### 3. Install & Initialize
+Install dependencies:
 ```bash
 npm install
 ```
 
-2. Create a local `.env.local` file:
-
-```env
-DISCORD_PUBLIC_KEY=your_discord_application_public_key
-DISCORD_BOT_TOKEN=your_discord_bot_token
-DISCORD_APPLICATION_ID=your_discord_application_id
-DISCORD_CLIENT_ID=your_discord_oauth_client_id
-DISCORD_CLIENT_SECRET=your_discord_oauth_client_secret
-NEXTAUTH_SECRET=generate_a_long_random_secret
-NEXTAUTH_URL=http://localhost:3000
-DATABASE_URL=your_neon_connection_string
-MIRROR_WEBHOOK_URL=your_discord_or_slack_webhook_url
-```
-
-`DISCORD_PUBLIC_KEY` is required for signature verification. Get it from **Discord Developer Portal > Your Application > General Information > Public Key**. Keep these values server-side; do not prefix them with `NEXT_PUBLIC_`.
-
-For Discord login, add `http://localhost:3000/api/auth/callback/discord` to the application's OAuth2 redirect URLs. Set `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` from the Discord Developer Portal, and set `NEXTAUTH_SECRET` to a long random value. `NEXTAUTH_URL` should match the site's base URL.
-
-`DATABASE_URL` is the Postgres connection string from the Neon dashboard. Neon connection strings already include `?sslmode=require`, which Prisma needs. `MIRROR_WEBHOOK_URL` can be a Discord channel webhook or a Slack Incoming Webhook; this project sends the mirror request in Discord's webhook format (`{"content":"..."}`).
-
-After adding your Neon connection string, create the database tables locally with:
-
+Push the database schema to your PostgreSQL database:
 ```bash
-npx prisma migrate dev --name init
+npx prisma db push
 ```
 
-Run the same migration command against a Neon database by putting its `DATABASE_URL` in `.env.local` first.
+### 4. Register Slash Commands
+Run the provided script to register the `/report` and `/status` global slash commands with Discord. (Note: Global commands can take up to an hour to propagate in Discord, though they are usually faster).
+```bash
+npx tsx scripts/register-commands.ts
+```
 
-3. Start the development server:
+### 5. Start the Development Server
+Because Discord needs a publicly reachable URL for the Interactions Endpoint, you must use a tunneling service like **ngrok** during local development.
 
+Start the Next.js app:
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000 to view the minimal homepage.
-
-## Discord endpoint
-
-Configure Discord's interactions endpoint URL as:
-
-```text
-https://your-vercel-domain.vercel.app/api/interactions
-```
-
-The endpoint accepts POST requests, verifies `X-Signature-Ed25519` and `X-Signature-Timestamp` against the raw request body, returns `{ "type": 1 }` for PING requests, and handles the `status` and `report` commands with database persistence, duplicate protection, configurable replies, and report mirroring.
-
-## Vercel environment variable
-
-In the Vercel project settings, add `DISCORD_PUBLIC_KEY`, `DATABASE_URL`, and `MIRROR_WEBHOOK_URL`. `DISCORD_PUBLIC_KEY` must be named exactly that and must **not** be prefixed with `NEXT_PUBLIC_`, because these values are read only on the server. Run `npx prisma migrate deploy` during deployment or from an environment with the production Neon `DATABASE_URL`.
-
-## Register slash commands once
-
-The one-off registration script loads `DISCORD_BOT_TOKEN` and `DISCORD_APPLICATION_ID` from `.env.local` and replaces the application's global commands with `status` and `report`:
-
+In a new terminal, start ngrok:
 ```bash
-node scripts/register-commands.js
+ngrok http 3000
 ```
 
-It logs Discord's HTTP status and response body. Run it again only when you intentionally want to update the registered command definitions.
+### 6. Configure Discord
+1. Go to the Discord Developer Portal.
+2. In your application's **General Information**, set the **Interactions Endpoint URL** to your ngrok URL: `https://<your-ngrok-id>.ngrok-free.app/api/interactions`
+3. In **OAuth2 > Redirects**, add your ngrok URL: `https://<your-ngrok-id>.ngrok-free.app/api/auth/callback/discord`
+4. Save changes. Discord will instantly send a PING to your endpoint to verify it works.
+
+---
+
+## How to Test This Submission (For Reviewers)
+
+To test the application end-to-end, you can use the following credentials and invite links:
+
+**1. Live Application URL:**
+[Insert Vercel URL Here]
+
+**2. Test Discord Server Invite:**
+[Insert Invite Link to your Test Server Here]
+*(Alternatively, you can invite the bot to your own server using this [Invite Link])*
+
+**3. Throwaway Admin Account:**
+Since the dashboard requires Discord OAuth login, please log in with your own Discord account. I have ensured the bot has the correct OAuth scopes. Once logged in, you will only see servers where you have `MANAGE_GUILD` permissions. 
+*(If you need a specific throwaway discord account credential, insert it here: Email / Password)*
+
+---
+
+## Deployment (Vercel)
+
+1. Push your repository to GitHub.
+2. Import the project into Vercel.
+3. Add all the Environment Variables listed above to your Vercel project settings.
+4. Set `NEXTAUTH_URL` to your production Vercel URL.
+5. Deploy!
+6. Remember to update your **Interactions Endpoint URL** and **OAuth2 Redirects** in the Discord Developer Portal to point to your new live Vercel URL instead of localhost/ngrok.

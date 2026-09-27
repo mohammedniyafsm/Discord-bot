@@ -10,12 +10,12 @@ export default function HeroSection() {
         Process Discord&apos;s `/status` and `/report` commands, log every interaction, and mirror reports to your team&apos;s webhook.
       </p>
       <div className={styles.actions}>
-        <a className={styles.primaryAction} href="#features">
-          Explore features <ArrowDownRight size={17} aria-hidden="true" />
+        <a className={styles.primaryAction} href="/dashboard">
+          See how it works <ArrowUpRight size={17} aria-hidden="true" />
         </a>
-        <a className={styles.secondaryAction} href="#workflow">
+        {/* <a className={styles.secondaryAction} href="/dashboard">
           See how it works <ArrowUpRight size={16} aria-hidden="true" />
-        </a>
+        </a> */}
       </div>
     </div>
   );

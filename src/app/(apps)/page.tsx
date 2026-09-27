@@ -1,7 +1,7 @@
-import PixelCloud from '../components/ui/PixelCloudBackgroundShowcase';
-import styles from '../components/home/page.module.css';
-import HeroSection from '../components/home/HeroSection';
-import Navbar from '../components/home/Navbar';
+import PixelCloud from '@/components/ui/PixelCloudBackgroundShowcase';
+import styles from '@/components/home/page.module.css';
+import HeroSection from '@/components/home/HeroSection';
+import Navbar from '@/components/home/Navbar';
 
 export default function Home() {
   return (
@@ -22,13 +22,13 @@ export default function Home() {
 
         <div className={styles.sceneNote}>
           <span className={styles.liveDot} aria-hidden="true" />
-          <span>Ed25519 request verification</span>
+          <span></span>
           <span className={styles.noteDivider} />
           <span>Discord API</span>
         </div>
       </section>
 
-      <section className={styles.details} id="features">
+      {/* <section className={styles.details} id="features">
         <div className={styles.detailsInner}>
           <div className={styles.detailsHeading}>
             <p className={styles.detailsEyebrow}>DISCORD INTERACTIONS</p>
@@ -80,7 +80,7 @@ export default function Home() {
             </article>
           </div>
         </div>
-      </section>
+      </section> */}
     </main>
   );
 }

@@ -9,9 +9,18 @@ export const authOptions: NextAuthOptions = {
     DiscordProvider({
       clientId: process.env.DISCORD_CLIENT_ID!,
       clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-      authorization: { params: { scope: 'identify guilds' } },
+      authorization: { params: { scope: 'identify guilds email' } },
     }),
   ],
+  callbacks: {
+    async session({ session, user }) {
+      if (session?.user && user?.id) {
+        // @ts-ignore
+        session.user.id = user.id;
+      }
+      return session;
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: 'database' },
 };
