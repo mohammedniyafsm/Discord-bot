@@ -1,5 +1,6 @@
 # Discord Slash-Command Bot & Dashboard
 
+
 A full-stack Next.js web application and Discord bot that processes slash commands, securely verifies interactions via Ed25519 signatures, mirrors reports to hidden channels, and provides a multi-tenant dashboard for server admins.
 
 ## Features
