@@ -39,7 +39,9 @@ export async function POST(request: Request) {
       }),
     });
 
+
     if (!webhookRes.ok) {
+      console.log("Webhook res", webhookRes)
       const errorText = await webhookRes.text();
       return NextResponse.json({ error: `Failed to create webhook: ${webhookRes.status} ${errorText}` }, { status: 500 });
     }

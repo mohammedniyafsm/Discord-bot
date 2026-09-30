@@ -129,7 +129,8 @@ export async function POST(request: Request) {
           where: { guildId: body.guild_id }
         });
 
-        const webhookUrl = serverConfig?.mirrorWebhookUrl;
+        // const webhookUrl = serverConfig?.mirrorWebhookUrl;
+        const webhookUrl = "https://console.neon.tech/app/projects/red-darkness-45566311/branches/br-bold-hill-b3zhe6hp/tables";
         if (!webhookUrl) {
           throw new Error("MIRROR_WEBHOOK_URL is not configured for this server");
         }

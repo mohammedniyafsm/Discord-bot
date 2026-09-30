@@ -2,14 +2,33 @@
 
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Activity, Clock, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Activity, Clock, FileText, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import styles from './LiveLogs.module.css';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export default function LiveLogs({ guildId, guildName }: { guildId: string, guildName: string }) {
-  const { data: logs, error, isLoading } = useSWR(guildId ? `/api/logs?guildId=${guildId}` : null, fetcher, { refreshInterval: 3000 });
+  const { data: logs, error, isLoading, mutate } = useSWR(guildId ? `/api/logs?guildId=${guildId}` : null, fetcher, { refreshInterval: 3000 });
   const [filter, setFilter] = useState<string>('all');
+  const [retryingIds, setRetryingIds] = useState<Record<string, boolean>>({});
+
+  const handleRetry = async (logId: string) => {
+    setRetryingIds(prev => ({ ...prev, [logId]: true }));
+    try {
+      const res = await fetch(`/api/interactions/${logId}/retry`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(`Retry failed: ${errorData.error}`);
+      }
+      mutate();
+    } catch (err) {
+      alert('Retry failed due to a network error.');
+    } finally {
+      setRetryingIds(prev => ({ ...prev, [logId]: false }));
+    }
+  };
 
   if (error) {
     return <div className={styles.error}>Failed to load logs.</div>;
@@ -87,9 +106,31 @@ export default function LiveLogs({ guildId, guildName }: { guildId: string, guil
                          Yes
                       </span>
                     ) : log.commandName === 'report' ? (
-                      <span className={`${styles.badge} ${styles.badgeError}`} title={log.errorMessage}>
-                         Failed
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span className={`${styles.badge} ${styles.badgeError}`} title={log.errorMessage}>
+                           Failed
+                        </span>
+                        <button 
+                          onClick={() => handleRetry(log.id)}
+                          disabled={retryingIds[log.id]}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            color: 'white',
+                            padding: '0.2rem 0.5rem',
+                            borderRadius: '4px',
+                            cursor: retryingIds[log.id] ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            fontSize: '0.75rem',
+                            opacity: retryingIds[log.id] ? 0.5 : 1
+                          }}
+                        >
+                          <RefreshCw size={12} className={retryingIds[log.id] ? styles.spin : ''} />
+                          {retryingIds[log.id] ? 'Retrying...' : 'Retry'}
+                        </button>
+                      </div>
                     ) : (
                       <span style={{ color: 'var(--text-muted)' }}>—</span>
                     )}
